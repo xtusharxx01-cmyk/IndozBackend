@@ -27,13 +27,19 @@ const s3 = new S3Client({
 
 // Helper function to upload to S3
 async function uploadToS3(file) {
-  const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+  const fileName = `${uuidv4()}${path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '')}`; // Sanitize file name
   const params = {
     Bucket: process.env.AWS_BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
     ContentType: file.mimetype,
   };
+
+  console.log('S3 Upload Params:', params); // Debug log to inspect parameters
+
+  if (!file.buffer) {
+    throw new Error('File buffer is empty'); // Handle empty file buffer
+  }
 
   await s3.send(new PutObjectCommand(params));
   return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
