@@ -140,6 +140,9 @@ router.put('/:id', upload.single('ad_image'), async (req, res) => {
   console.log(`Edit request received for ad ID: ${id}`);
   console.log('Request body:', req.body);
 
+  // Add log to check if the file is being received
+  console.log('Uploaded file:', req.file);
+
   try {
     const ad = await Ad.findByPk(id);
     if (!ad) {
