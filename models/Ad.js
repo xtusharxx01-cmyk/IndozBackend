@@ -6,7 +6,7 @@ const Ad = sequelize.define('Ad', {
   ad_image: { type: DataTypes.STRING, allowNull: false },
   redirect_url: { type: DataTypes.STRING, allowNull: false },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
-  type: { type: DataTypes.STRING, allowNull: false }
+  type: { type: DataTypes.STRING, allowNull: true } // Updated allowNull to true
 });
 
 module.exports = Ad;
