@@ -61,6 +61,13 @@ async function uploadToS3(file) {
   }
 }
 
+// Middleware to log incoming requests for debugging
+router.use((req, res, next) => {
+  console.log('Incoming Request Headers:', req.headers);
+  console.log('Incoming Request Body:', req.body);
+  next();
+});
+
 // Get all ads
 router.get('/', async (req, res) => {
   try {
