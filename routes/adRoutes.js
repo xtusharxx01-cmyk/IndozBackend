@@ -87,8 +87,15 @@ router.get('/:id', async (req, res) => {
 router.post('/', upload.single('ad_image'), async (req, res) => {
   try {
     const { redirect_url, is_active } = req.body;
+    let { type } = req.body;
+
     if (!redirect_url) {
       return res.status(400).json({ success: false, message: 'redirect_url is required' });
+    }
+
+    // Set default type to 'ad' if not provided
+    if (!type) {
+      type = 'ad';
     }
 
     let adImageUrl = null;
@@ -115,6 +122,7 @@ router.post('/', upload.single('ad_image'), async (req, res) => {
       ad_image: adImageUrl,
       redirect_url,
       is_active: is_active || true,
+      type, // Ensure `type` is included
     });
 
     res.status(201).json({ success: true, ad });
