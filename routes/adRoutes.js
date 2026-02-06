@@ -42,13 +42,21 @@ async function uploadToS3(file) {
     throw new Error('File buffer is empty'); // Handle empty file buffer
   }
 
-  try {
-    const result = await s3.send(new PutObjectCommand(params));
-    console.log('S3 Upload Success:', result); // Log successful upload response
-    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
-  } catch (error) {
-    console.error('S3 Upload Error:', error); // Log detailed error response
-    throw error;
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    try {
+      const result = await s3.send(new PutObjectCommand(params));
+      console.log('S3 Upload Success:', result); // Log successful upload response
+      return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+    } catch (error) {
+      attempts++;
+      console.error(`S3 Upload Attempt ${attempts} Failed:`, error); // Log detailed error response
+      if (attempts >= maxAttempts) {
+        throw new Error(`S3 upload failed after ${maxAttempts} attempts: ${error.message}`);
+      }
+    }
   }
 }
 
