@@ -70,7 +70,6 @@ router.post('/', upload.single('thumbnail'), async (req, res) => {
         Key: filename,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-        ACL: 'public-read',
       };
       try {
         await s3.send(new PutObjectCommand(params));
