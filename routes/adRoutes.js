@@ -132,7 +132,7 @@ router.post('/', upload.single('ad_image'), async (req, res) => {
   }
 });
 
-// Update an ad by ID
+// Ensure the update route supports image upload with correct metadata
 router.put('/:id', upload.single('ad_image'), async (req, res) => {
   const { id } = req.params;
   const { redirect_url, is_active, type } = req.body;
@@ -145,10 +145,20 @@ router.put('/:id', upload.single('ad_image'), async (req, res) => {
 
     // If a new image file is uploaded, upload to S3
     if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      const filename = `ads/${Date.now()}-${uuidv4()}${ext}`;
+      const params = {
+        Bucket: process.env.AWS_S3_BUCKET, // Use the same bucket as the article uploader
+        Key: filename,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype, // Ensure correct ContentType metadata
+      };
       try {
-        adImageUrl = await uploadToS3(req.file);
+        await s3.send(new PutObjectCommand(params));
+        adImageUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        console.log('S3 upload success (update):', adImageUrl);
       } catch (s3err) {
-        console.error('S3 upload failed:', s3err);
+        console.error('S3 upload failed (update):', s3err);
         return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
       }
     }
