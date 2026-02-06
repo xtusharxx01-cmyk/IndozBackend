@@ -17,10 +17,9 @@ const upload = multer({
   },
 });
 
-// Update S3 client configuration to handle bucket redirection
+// Update S3 client configuration to rely on AWS SDK's automatic endpoint resolution
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
-  endpoint: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com`,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
