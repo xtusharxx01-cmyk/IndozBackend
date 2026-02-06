@@ -137,14 +137,21 @@ router.put('/:id', upload.single('ad_image'), async (req, res) => {
   const { id } = req.params;
   const { redirect_url, is_active, type } = req.body;
 
+  console.log(`Edit request received for ad ID: ${id}`);
+  console.log('Request body:', req.body);
+
   try {
     const ad = await Ad.findByPk(id);
-    if (!ad) return res.status(404).json({ success: false, message: 'Ad not found' });
+    if (!ad) {
+      console.log(`Ad with ID ${id} not found`);
+      return res.status(404).json({ success: false, message: 'Ad not found' });
+    }
 
     let adImageUrl = ad.ad_image;
 
     // If a new image file is uploaded, upload to S3
     if (req.file) {
+      console.log('New image file received:', req.file.originalname);
       const ext = path.extname(req.file.originalname);
       const filename = `ads/${Date.now()}-${uuidv4()}${ext}`;
       const params = {
@@ -154,14 +161,21 @@ router.put('/:id', upload.single('ad_image'), async (req, res) => {
         ContentType: req.file.mimetype, // Ensure correct ContentType metadata
       };
       try {
-        await s3.send(new PutObjectCommand(params));
+        const result = await s3.send(new PutObjectCommand(params));
         adImageUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
-        console.log('S3 upload success (update):', adImageUrl);
+        console.log('S3 upload success (update):', result);
       } catch (s3err) {
         console.error('S3 upload failed (update):', s3err);
         return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
       }
     }
+
+    console.log('Updating ad with new data:', {
+      ad_image: adImageUrl,
+      redirect_url,
+      is_active: is_active || ad.is_active,
+      type: type || ad.type,
+    });
 
     await ad.update({
       ad_image: adImageUrl,
@@ -170,8 +184,10 @@ router.put('/:id', upload.single('ad_image'), async (req, res) => {
       type: type || ad.type,
     });
 
+    console.log(`Ad ID ${id} updated successfully`);
     res.json({ success: true, ad });
   } catch (err) {
+    console.error(`Error updating ad ID ${id}:`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
