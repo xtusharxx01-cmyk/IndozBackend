@@ -1,4 +1,3 @@
-
 const express = require('express');
 const Article = require('../models/Article');
 const multer = require('multer');
@@ -130,6 +129,10 @@ router.put('/:id', upload.single('thumbnail'), async (req, res) => {
   try {
     const article = await Article.findByPk(id);
     if (!article) return res.status(404).json({ success: false, message: 'Article not found' });
+
+    console.log('Edit request received for article ID:', id);
+    console.log('Request body:', req.body);
+    console.log('Uploaded file:', req.file);
 
     let updateData = { ...req.body };
     // If a new thumbnail file is uploaded, upload to S3
