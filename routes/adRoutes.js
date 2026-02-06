@@ -72,8 +72,8 @@ router.post('/', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const { redirect_url, is_active, type } = req.body;
-  if (!redirect_url || !type) return res.status(400).json({ success: false, message: 'redirect_url and type are required' });
+  const { redirect_url, is_active } = req.body;
+  if (!redirect_url) return res.status(400).json({ success: false, message: 'redirect_url is required' });
 
   try {
     let adImageUrl = null;
@@ -92,7 +92,6 @@ router.post('/', (req, res, next) => {
       ad_image: adImageUrl,
       redirect_url,
       is_active: is_active || true,
-      type,
     });
 
     res.status(201).json({ success: true, ad });
