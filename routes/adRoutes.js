@@ -26,14 +26,14 @@ const s3 = new S3Client({
   },
 });
 
-// Helper function to upload to S3
+// Fix ad image upload logic to use the same S3 bucket configuration as the article uploader
 async function uploadToS3(file) {
   const fileName = `${uuidv4()}${path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '')}`; // Sanitize file name
   const params = {
-    Bucket: process.env.AWS_BUCKET_NAME,
+    Bucket: process.env.AWS_S3_BUCKET, // Use the same bucket as the article uploader
     Key: fileName,
     Body: file.buffer,
-    ContentType: file.mimetype,
+    ContentType: file.mimetype, // Ensure correct ContentType metadata
   };
 
   console.log('S3 Upload Params:', JSON.stringify(params, null, 2)); // Debug log to inspect parameters
@@ -50,7 +50,7 @@ async function uploadToS3(file) {
     try {
       const result = await s3.send(new PutObjectCommand(params));
       console.log('S3 Upload Success:', result); // Log successful upload response
-      return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+      return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
     } catch (error) {
       attempts++;
       console.error(`S3 Upload Attempt ${attempts} Failed:`, error); // Log detailed error response
@@ -106,7 +106,7 @@ router.post('/', upload.single('ad_image'), async (req, res) => {
         Bucket: process.env.AWS_S3_BUCKET,
         Key: filename,
         Body: req.file.buffer,
-        ContentType: req.file.mimetype,
+        ContentType: req.file.mimetype, // Explicitly set ContentType
       };
       try {
         await s3.send(new PutObjectCommand(params));
