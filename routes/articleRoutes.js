@@ -125,12 +125,33 @@ router.post('/', upload.single('thumbnail'), async (req, res) => {
 });
 
 // Update article
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('thumbnail'), async (req, res) => {
   const { id } = req.params;
   try {
     const article = await Article.findByPk(id);
     if (!article) return res.status(404).json({ success: false, message: 'Article not found' });
-    await article.update(req.body);
+
+    let updateData = { ...req.body };
+    // If a new thumbnail file is uploaded, upload to S3
+    if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      const filename = `thumbnails/${Date.now()}-${uuidv4()}${ext}`;
+      const params = {
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: filename,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+      };
+      try {
+        await s3.send(new PutObjectCommand(params));
+        updateData.thumbnail = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        console.log('S3 upload success (edit):', updateData.thumbnail);
+      } catch (s3err) {
+        console.error('S3 upload failed (edit):', s3err);
+        return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
+      }
+    }
+    await article.update(updateData);
     return res.json({ success: true, article });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
