@@ -97,14 +97,14 @@ router.post('/', upload.single('ad_image'), async (req, res) => {
       const ext = path.extname(req.file.originalname);
       const filename = `ads/${Date.now()}-${uuidv4()}${ext}`;
       const params = {
-        Bucket: process.env.AWS_BUCKET_NAME,
+        Bucket: process.env.AWS_S3_BUCKET,
         Key: filename,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
       };
       try {
         await s3.send(new PutObjectCommand(params));
-        adImageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        adImageUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
         console.log('S3 upload success:', adImageUrl);
       } catch (s3err) {
         console.error('S3 upload failed:', s3err);
