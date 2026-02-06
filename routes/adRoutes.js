@@ -62,7 +62,16 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new ad
-router.post('/', upload.single('ad_image'), async (req, res) => {
+router.post('/', (req, res, next) => {
+  upload.single('ad_image')(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ success: false, message: 'Unexpected field name. Expected field name: ad_image' });
+    } else if (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   const { redirect_url, is_active, type } = req.body;
   if (!redirect_url || !type) return res.status(400).json({ success: false, message: 'redirect_url and type are required' });
 
