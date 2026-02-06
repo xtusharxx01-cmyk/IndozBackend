@@ -1,6 +1,43 @@
 const express = require('express');
 const Ad = require('../models/Ad');
 const router = express.Router();
+const multer = require('multer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Invalid file type'));
+  },
+});
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
+// Helper function to upload to S3
+async function uploadToS3(file) {
+  const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+  const params = {
+    Bucket: process.env.AWS_BUCKET_NAME,
+    Key: fileName,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  await s3.send(new PutObjectCommand(params));
+  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+}
 
 // Get all ads
 router.get('/', async (req, res) => {
@@ -25,11 +62,30 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new ad
-router.post('/', async (req, res) => {
-  const { ad_image, redirect_url, is_active, type } = req.body;
-  if (!ad_image || !redirect_url || !type) return res.status(400).json({ success: false, message: 'ad_image, redirect_url, and type are required' });
+router.post('/', upload.single('ad_image'), async (req, res) => {
+  const { redirect_url, is_active, type } = req.body;
+  if (!redirect_url || !type) return res.status(400).json({ success: false, message: 'redirect_url and type are required' });
+
   try {
-    const ad = await Ad.create({ ad_image, redirect_url, is_active, type });
+    let adImageUrl = null;
+
+    // If a file is uploaded, upload to S3
+    if (req.file) {
+      try {
+        adImageUrl = await uploadToS3(req.file);
+      } catch (s3err) {
+        console.error('S3 upload failed:', s3err);
+        return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
+      }
+    }
+
+    const ad = await Ad.create({
+      ad_image: adImageUrl,
+      redirect_url,
+      is_active: is_active || true,
+      type,
+    });
+
     res.status(201).json({ success: true, ad });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -37,12 +93,33 @@ router.post('/', async (req, res) => {
 });
 
 // Update an ad by ID
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('ad_image'), async (req, res) => {
   const { id } = req.params;
+  const { redirect_url, is_active, type } = req.body;
+
   try {
     const ad = await Ad.findByPk(id);
     if (!ad) return res.status(404).json({ success: false, message: 'Ad not found' });
-    await ad.update({ ...req.body, type: req.body.type });
+
+    let adImageUrl = ad.ad_image;
+
+    // If a new image file is uploaded, upload to S3
+    if (req.file) {
+      try {
+        adImageUrl = await uploadToS3(req.file);
+      } catch (s3err) {
+        console.error('S3 upload failed:', s3err);
+        return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
+      }
+    }
+
+    await ad.update({
+      ad_image: adImageUrl,
+      redirect_url,
+      is_active: is_active || ad.is_active,
+      type: type || ad.type,
+    });
+
     res.json({ success: true, ad });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
