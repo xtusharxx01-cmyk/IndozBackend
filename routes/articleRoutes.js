@@ -48,10 +48,16 @@ router.get('/trending', async (req, res) => {
 // Create article (supports multipart/form-data for thumbnail upload)
 router.post('/', upload.single('thumbnail'), async (req, res) => {
   try {
+    console.log('POST /api/articles called');
     let { title, desc, url, is_trending } = req.body || {};
     let thumbnailUrl = req.body.thumbnail || '';
+    console.log('Request body:', req.body);
+    if (req.file) {
+      console.log('File received:', req.file.originalname, req.file.mimetype, req.file.size);
+    }
 
     if (!title || !desc || !url) {
+      console.log('Missing required fields');
       return res.status(400).json({ success: false, message: 'title, desc, and url are required' });
     }
 
@@ -66,11 +72,18 @@ router.post('/', upload.single('thumbnail'), async (req, res) => {
         ContentType: req.file.mimetype,
         ACL: 'public-read',
       };
-      await s3.send(new PutObjectCommand(params));
-      thumbnailUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+      try {
+        await s3.send(new PutObjectCommand(params));
+        thumbnailUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        console.log('S3 upload success:', thumbnailUrl);
+      } catch (s3err) {
+        console.error('S3 upload failed:', s3err);
+        return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
+      }
     }
 
     if (!thumbnailUrl) {
+      console.log('No thumbnail provided');
       return res.status(400).json({ success: false, message: 'thumbnail is required (as file or url)' });
     }
 
@@ -81,8 +94,10 @@ router.post('/', upload.single('thumbnail'), async (req, res) => {
       url,
       is_trending: !!is_trending,
     });
+    console.log('Article created:', article.id);
     return res.status(201).json({ success: true, article });
   } catch (err) {
+    console.error('POST /api/articles error:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 });
