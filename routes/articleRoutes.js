@@ -86,15 +86,38 @@ router.post('/', upload.single('thumbnail'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'thumbnail is required (as file or url)' });
     }
 
-    const article = await Article.create({
-      title,
-      desc,
-      thumbnail: thumbnailUrl,
-      url,
-      is_trending: !!is_trending,
-    });
-    console.log('Article created:', article.id);
-    return res.status(201).json({ success: true, article });
+    let newId;
+    try {
+      // Try to let auto-increment handle id
+      const article = await Article.create({
+        title,
+        desc,
+        thumbnail: thumbnailUrl,
+        url,
+        is_trending: !!is_trending,
+      });
+      console.log('Article created:', article.id);
+      return res.status(201).json({ success: true, article });
+    } catch (uniqueErr) {
+      if (uniqueErr.name === 'SequelizeUniqueConstraintError' && uniqueErr.errors.some(e => e.path === 'id')) {
+        // Fallback: get max id and increment
+        const maxId = await Article.max('id') || 0;
+        newId = maxId + 1;
+        const article = await Article.create({
+          id: newId,
+          title,
+          desc,
+          thumbnail: thumbnailUrl,
+          url,
+          is_trending: !!is_trending,
+        });
+        console.log('Article created with fallback id:', article.id);
+        return res.status(201).json({ success: true, article });
+      } else {
+        console.error('Article creation error:', uniqueErr);
+        return res.status(500).json({ success: false, message: uniqueErr.message });
+      }
+    }
   } catch (err) {
     console.error('POST /api/articles error:', err);
     return res.status(500).json({ success: false, message: err.message });
