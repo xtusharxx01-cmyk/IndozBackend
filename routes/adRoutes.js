@@ -35,14 +35,21 @@ async function uploadToS3(file) {
     ContentType: file.mimetype,
   };
 
-  console.log('S3 Upload Params:', params); // Debug log to inspect parameters
+  console.log('S3 Upload Params:', JSON.stringify(params, null, 2)); // Debug log to inspect parameters
 
   if (!file.buffer) {
+    console.error('File buffer is empty'); // Log empty file buffer error
     throw new Error('File buffer is empty'); // Handle empty file buffer
   }
 
-  await s3.send(new PutObjectCommand(params));
-  return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+  try {
+    const result = await s3.send(new PutObjectCommand(params));
+    console.log('S3 Upload Success:', result); // Log successful upload response
+    return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+  } catch (error) {
+    console.error('S3 Upload Error:', error); // Log detailed error response
+    throw error;
+  }
 }
 
 // Get all ads
