@@ -12,6 +12,7 @@ const hireStudioRequestRoutes = require('./routes/hireStudioRequestRoutes');
 const adsQuoteInquiryRoutes = require('./routes/adsQuoteInquiryRoutes');
 const adRoutes = require('./routes/adRoutes');
 
+const userRoutes = require('./routes/userRoutes');
 const app = express();
 // Configure CORS to allow only specified origins (comma-separated in ALLOWED_ORIGINS)
 const allowed = process.env.ALLOWED_ORIGINS
@@ -38,6 +39,7 @@ app.use('/api', authRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/live', liveRoutes);
 app.use('/api/about', aboutRoutes);
+app.use('/api/users', userRoutes);
 app.use('/ads', adRoutes);
 
 app.use('/api', hireStudioRequestRoutes);
