@@ -25,6 +25,13 @@ const s3 = new S3Client({
   },
 });
 
+// Middleware to log incoming requests for debugging
+router.use((req, res, next) => {
+  console.log('Incoming Request Headers:', req.headers);
+  console.log('Incoming Request Body:', req.body);
+  next();
+});
+
 router.get('/', async (req, res) => {
   try {
   const articles = await Article.findAll({ order: [['createdAt', 'DESC']] });
