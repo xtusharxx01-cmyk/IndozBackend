@@ -83,26 +83,27 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new ad
-router.post('/', (req, res, next) => {
-  upload.single('ad_image')(req, res, (err) => {
-    if (err instanceof multer.MulterError && err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ success: false, message: 'Unexpected field name. Expected field name: ad_image' });
-    } else if (err) {
-      return res.status(500).json({ success: false, message: err.message });
-    }
-    next();
-  });
-}, async (req, res) => {
-  const { redirect_url, is_active } = req.body;
-  if (!redirect_url) return res.status(400).json({ success: false, message: 'redirect_url is required' });
-
+router.post('/', upload.single('ad_image'), async (req, res) => {
   try {
-    let adImageUrl = null;
+    const { redirect_url, is_active } = req.body;
+    if (!redirect_url) {
+      return res.status(400).json({ success: false, message: 'redirect_url is required' });
+    }
 
-    // If a file is uploaded, upload to S3
+    let adImageUrl = null;
     if (req.file) {
+      const ext = path.extname(req.file.originalname);
+      const filename = `ads/${Date.now()}-${uuidv4()}${ext}`;
+      const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: filename,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+      };
       try {
-        adImageUrl = await uploadToS3(req.file);
+        await s3.send(new PutObjectCommand(params));
+        adImageUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        console.log('S3 upload success:', adImageUrl);
       } catch (s3err) {
         console.error('S3 upload failed:', s3err);
         return res.status(500).json({ success: false, message: 'S3 upload failed', error: s3err.message });
@@ -117,6 +118,7 @@ router.post('/', (req, res, next) => {
 
     res.status(201).json({ success: true, ad });
   } catch (err) {
+    console.error('POST /api/ads error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
