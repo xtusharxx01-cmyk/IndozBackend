@@ -26,7 +26,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser requests
+    // Allow requests with no origin (Postman, mobile apps)
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -37,13 +38,14 @@ app.use(cors({
   credentials: true
 }));
 
-app.options('*', cors()); // handle preflight
-
 /* ========================= */
 
 app.use(express.json());
 
-// Routes
+/* =========================
+   ROUTES
+========================= */
+
 app.use('/api', authRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/live', liveRoutes);
@@ -52,6 +54,10 @@ app.use('/api/users', userRoutes);
 app.use('/ads', adRoutes);
 app.use('/api', hireStudioRequestRoutes);
 app.use('/api', adsQuoteInquiryRoutes);
+
+/* =========================
+   SERVER START
+========================= */
 
 (async () => {
   try {
@@ -62,7 +68,12 @@ app.use('/api', adsQuoteInquiryRoutes);
     console.log('Database synced successfully.');
 
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+    // IMPORTANT: bind to 0.0.0.0 for EC2 public access
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
   } catch (error) {
     console.error('Database connection error:', error);
   }
